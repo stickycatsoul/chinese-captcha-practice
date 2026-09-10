@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汉字验证练习 — Chinese CAPTCHA Practice</title>
+<style>
+  :root{
+    --ink:#1c1a16;
+    --paper:#f1ece0;
+    --paper-dim:#e6dfcd;
+    --seal:#a33327;
+    --seal-dim:#c96354;
+    --jade:#3f6656;
+    --gold:#b3892b;
+    --line: rgba(28,26,22,0.16);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .cjk{ font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif; }
+
+  header{
+    padding:28px 20px 18px;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{
+    margin:0 0 4px;
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  header h1 .zh{ font-size:26px; margin-right:8px; }
+  header p{
+    margin:0;
+    font-size:14px;
+    color:rgba(28,26,22,0.65);
+    max-width:60ch;
+    line-height:1.5;
+  }
+
+  nav{
+    padding:4px 20px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .nav-group{ padding-top:16px; }
+  .nav-group.first{ padding-top:12px; }
+  .nav-group-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .ngh-label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--seal);
+  }
+  .nav-group:nth-child(2) .ngh-label{ color:var(--gold); }
+  .nav-group:nth-child(3) .ngh-label{ color:var(--jade); }
+  .ngh-sub{
+    font-size:12px;
+    color:rgba(28,26,22,0.5);
+  }
+  .nav-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  nav button{
+    font-family:inherit;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:8px 12px;
+    font-size:13px;
+    cursor:pointer;
+    border-radius:2px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    transition:border-color .15s, background .15s;
+  }
+  nav button .zh{ font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif; font-size:14px; }
+  nav button.active{
+    border-color:var(--seal);
+    background:rgba(163,51,39,0.08);
+    color:var(--seal);
+  }
+
+  main{
+    padding:24px 20px 60px;
+    max-width:640px;
+    margin:0 auto;
+  }
+
+  .module-title{
+    font-size:15px;
+    color:rgba(28,26,22,0.55);
+    margin:0 0 4px;
+  }
+  .module-instruction{
+    font-size:17px;
+    margin:0 0 20px;
+    line-height:1.5;
+  }
+  .module-instruction .zh{ font-size:19px; }
+
+  .panel{
+    border:1px solid var(--line);
+    background:#fff;
+    padding:22px 18px;
+    margin-bottom:16px;
+  }
+
+  .char-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+  }
+  .tile{
+    width:52px;
+    height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:26px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    cursor:pointer;
+    user-select:none;
+    position:relative;
+  }
+  .tile.selected{ border-color:var(--gold); background:rgba(179,137,43,0.15); }
+  .tile.used{ opacity:0.3; cursor:default; }
+  .tile.correct{ border-color:var(--jade); background:rgba(63,102,86,0.12); }
+  .tile.wrong{ border-color:var(--seal); background:rgba(163,51,39,0.1); }
+  .tile .badge{
+    position:absolute;
+    top:-8px;
+    right:-8px;
+    background:var(--seal);
+    color:#fff;
+    font-size:11px;
+    font-family:-apple-system,sans-serif;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .slot-row{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .slot{
+    width:52px;
+    height:52px;
+    border:1px dashed var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:26px;
+    background:var(--paper-dim);
+  }
+
+  .options-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    max-width:320px;
+    margin:0 auto;
+  }
+  .opt{
+    padding:12px 4px;
+    text-align:center;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-size:22px;
+    cursor:pointer;
+  }
+  .opt.picked{ border-color:var(--gold); background:rgba(179,137,43,0.15); }
+
+  .rotate-stage{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+  }
+  .rotate-char{
+    font-size:64px;
+    width:110px;
+    height:110px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--line);
+    background:var(--paper);
+    transition:transform .2s ease;
+  }
+
+  .word-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+  }
+  .word-chip{
+    padding:10px 14px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-size:18px;
+    cursor:pointer;
+  }
+  .word-chip.used{ opacity:0.3; cursor:default; }
+
+  .built-sentence{
+    min-height:44px;
+    border-bottom:1px solid var(--line);
+    font-size:20px;
+    margin-bottom:18px;
+    padding:8px 2px;
+    text-align:center;
+    letter-spacing:0.05em;
+  }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+    flex-wrap:wrap;
+  }
+  button.action{
+    font-family:inherit;
+    padding:10px 16px;
+    font-size:13px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+  }
+  button.action.secondary{
+    background:transparent;
+    color:var(--ink);
+    border-color:var(--line);
+  }
+  button.action:disabled{ opacity:0.35; cursor:default; }
+
+  .feedback{
+    margin-top:14px;
+    font-size:14px;
+    min-height:20px;
+  }
+  .feedback.ok{ color:var(--jade); }
+  .feedback.bad{ color:var(--seal); }
+
+  .translation{
+    margin-top:10px;
+    font-size:13px;
+    color:rgba(28,26,22,0.5);
+  }
+
+  .streak{
+    font-size:12px;
+    color:rgba(28,26,22,0.5);
+    text-align:right;
+    margin-top:-4px;
+    margin-bottom:14px;
+  }
+
+  .m3-grid{
+    display:grid;
+    grid-template-columns:repeat(5,46px);
+    gap:4px;
+    justify-content:center;
+  }
+  .m3-cell{
+    width:46px;height:46px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:24px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    cursor:pointer;user-select:none;
+  }
+  .m3-cell.sel{ border-color:var(--gold); background:rgba(179,137,43,0.18); }
+  .m3-cell.hit{ border-color:var(--jade); background:rgba(63,102,86,0.2); }
+
+  .go-board{
+    display:grid;
+    gap:1px;
+    justify-content:center;
+    background:var(--line);
+    width:fit-content;
+    margin:0 auto;
+    border:1px solid var(--line);
+  }
+  .go-cell{
+    width:28px;height:28px;
+    background:#e8dfc4;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .go-stone{
+    width:20px;height:20px;border-radius:50%;
+  }
+  .go-stone.b{ background:#1c1a16; }
+  .go-stone.w{ background:#fbf9f4; border:1px solid rgba(28,26,22,0.35); }
+  .go-cell.mark{ background:rgba(163,51,39,0.25); }
+  .go-cell.good{ background:rgba(63,102,86,0.35); }
+
+  .nine-grid{
+    display:grid;
+    grid-template-columns:repeat(3,64px);
+    gap:5px;
+    justify-content:center;
+  }
+  .nine-cell{
+    width:64px;height:64px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:30px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    cursor:pointer;user-select:none;
+    position:relative;
+  }
+  .nine-cell.sel{ border-color:var(--gold); background:rgba(179,137,43,0.18); }
+  .nine-cell.correct{ border-color:var(--jade); background:rgba(63,102,86,0.15); }
+  .nine-cell.wrong{ border-color:var(--seal); background:rgba(163,51,39,0.12); }
+
+  .avoid-stage{
+    position:relative;
+    width:100%;
+    max-width:300px;
+    height:260px;
+    margin:0 auto;
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    overflow:hidden;
+    touch-action:none;
+    cursor:grab;
+  }
+  .avoid-stage:active{ cursor:grabbing; }
+  .avoid-player{
+    position:absolute;
+    width:20px;
+    height:20px;
+    background:var(--seal);
+    border-radius:2px;
+  }
+  .avoid-bar{
+    position:absolute;
+    height:14px;
+    background:var(--ink);
+  }
+  .avoid-hud{
+    display:flex;
+    justify-content:space-between;
+    max-width:300px;
+    margin:10px auto 0;
+    font-size:12px;
+    color:rgba(28,26,22,0.6);
+  }
+  .trace{
+    margin-top:14px;
+    padding:12px 14px;
+    border:1px solid var(--line);
+    background:var(--paper-dim);
+    font-size:12px;
+    line-height:1.7;
+  }
+  .trace .trace-head{ color:rgba(28,26,22,0.5); margin-bottom:4px; }
+
+  .stage{
+    position:relative;
+    margin:0 auto;
+    background:var(--paper-dim);
+    background-size:cover;
+    border:1px solid var(--line);
+    overflow:hidden;
+    max-width:100%;
+  }
+  .scatter{
+    position:absolute;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+    line-height:1;
+  }
+  .scatter .hitpad{
+    position:absolute;
+    inset:-8px;
+  }
+  .scatter.picked{ outline:2px solid var(--gold); outline-offset:2px; }
+  .scatter.gone{ opacity:0.28; cursor:default; }
+  .scatter .seq{
+    position:absolute;
+    top:-10px; right:-10px;
+    background:var(--seal);
+    color:#fff;
+    font-family:-apple-system,sans-serif;
+    font-size:11px;
+    width:18px;height:18px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    transform:none;
+  }
+  .prompt-strip{
+    max-width:300px;
+    margin:8px auto 0;
+    padding:9px 12px;
+    border:1px solid var(--line);
+    background:var(--paper-dim);
+    font-size:15px;
+    text-align:center;
+  }
+
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+    padding:12px 20px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+    color:rgba(28,26,22,0.6);
+  }
+  .toolbar button{
+    font-family:inherit;
+    font-size:12px;
+    padding:6px 11px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+    border-radius:2px;
+  }
+  .toolbar button.on{
+    border-color:var(--seal);
+    background:rgba(163,51,39,0.09);
+    color:var(--seal);
+  }
+
+  .icon-tile{
+    width:56px;
+    height:56px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    cursor:pointer;
+    user-select:none;
+    position:relative;
+  }
+  .icon-tile.used{ opacity:0.3; cursor:default; }
+
+  .shape-grid{
+    display:grid;
+    grid-template-columns:repeat(3,20px);
+    grid-template-rows:repeat(3,20px);
+    gap:2px;
+  }
+  .shape-cell{ background:var(--paper-dim); }
+  .shape-cell.on{ background:var(--jade); }
+  .shape-option{
+    padding:12px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    cursor:pointer;
+    display:flex;
+    justify-content:center;
+  }
+  .shape-option.picked{ border-color:var(--gold); background:rgba(179,137,43,0.15); }
+  .shape-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .shape-ref{
+    display:flex;
+    justify-content:center;
+    padding:12px;
+    border:1px solid var(--seal);
+    background:var(--paper);
+    width:fit-content;
+    margin:0 auto 6px;
+  }
+
+  footer.credit{
+    max-width:640px;
+    margin:0 auto;
+    padding:20px 20px 48px;
+    border-top:1px solid var(--line);
+    font-size:12.5px;
+    line-height:1.65;
+    color:rgba(28,26,22,0.65);
+  }
+  footer.credit p{ margin:0 0 8px; }
+  footer.credit a{ color:var(--jade); }
+
+  .dataset-note{
+    margin:0 20px 40px;
+    max-width:640px;
+    padding:16px 18px;
+    border:1px solid var(--jade);
+    background:rgba(63,102,86,0.06);
+    font-size:13px;
+    line-height:1.6;
+  }
+  @media (min-width:680px){ .dataset-note{ margin:0 auto 40px; } }
+  .dataset-note a{ color:var(--jade); }
+  .dataset-note .dn-head{ font-weight:600; margin-bottom:4px; }
+
+  .deploy{
+    margin-top:24px;
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-left:3px solid var(--gold);
+    background:rgba(179,137,43,0.06);
+    font-size:13px;
+    line-height:1.6;
+  }
+  .deploy .cite-head{
+    color:rgba(28,26,22,0.45);
+    margin-bottom:4px;
+  }
+  .deploy-scope{
+    padding-top:8px;
+    border-top:1px solid var(--line);
+    color:rgba(28,26,22,0.75);
+  }
+
+  .citation{
+    margin-top:28px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    font-size:13px;
+    line-height:1.6;
+    color:rgba(28,26,22,0.75);
+  }
+  .citation .cite-head{
+    color:rgba(28,26,22,0.45);
+    margin-bottom:6px;
+  }
+  .citation .cite-title{ font-weight:600; }
+  .citation a{ color:var(--jade); }
+  .citation .cite-note{
+    margin-top:8px;
+    font-size:12px;
+    color:rgba(28,26,22,0.55);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="zh cjk">验证</span>Chinese CAPTCHA Practice</h1>
+  <p>Thirteen interaction styles you meet on Chinese sites, drilled one at a time. Only some are genuinely China-specific — the ones built on reading Chinese characters or idioms. Others are global mechanics that Chinese vendors adopted. Each module says which it is, names the vendors shipping it, and cites an open-access paper.</p>
+</header>
+
+<nav id="nav"></nav>
+<div class="toolbar" id="toolbar"></div>
+
+<main id="main"></main>
+
+<footer class="credit">
+  <p><b>Built by Eve C. with Claude (Anthropic).</b> Free to use, adapt and share for OSINT training. The CAPTCHA reproductions here are original approximations built from published descriptions — no vendor assets or captured challenge images are embedded.</p>
+  <p>Corrections welcome, particularly on vendor attribution and on the two types that still lack direct literature (语序点选, 语序选词). <a href="https://github.com/stickycatsoul/chinese-captcha-practice">Github repo</a></p>
+</footer>
+
+<div class="dataset-note">
+  <div class="dn-head">Real labelled samples</div>
+  <p style="margin:0 0 8px">This tool renders clean approximations. To see what live challenges actually look like — photographic backgrounds, distorted glyphs, the prompt strip along the bottom edge — work from real captures:</p>
+  <p style="margin:0 0 8px"><a href="https://huggingface.co/datasets/Amort/captcha_chinese_click_1" target="_blank" rel="noopener">Amort/captcha_chinese_click_1</a> on Hugging Face — 451 annotated Chinese click-sequence CAPTCHAs, Apache-2.0, ~25 MB. Each image is 344 px wide with bounding boxes and category labels separating the prompt-strip characters from the ones scattered over the background.</p>
+  <p style="margin:0">Browse it in the Data Studio viewer without downloading anything, or pull it with the <code>datasets</code> library for detection work.</p>
+</div>
+
+<script>
+const GROUPS = [
+  {id:'cn',    label:'China-specific',        sub:'Cannot be solved without reading Chinese'},
+  {id:'mixed', label:'Chinese-inflected',     sub:'Universal mechanic, Chinese rendering or Chinese-vendor product'},
+  {id:'global',label:'Global mechanics',      sub:'Language-neutral; Chinese vendors adopted rather than invented these'},
+];
+
+const MODULES = [
+  {id:'click', zh:'文字点选', en:'Click Sequence', g:'cn'},
+  {id:'phrase', zh:'补全成语', en:'Complete Phrase', g:'cn'},
+  {id:'sentence', zh:'语序点选', en:'Sentence Order', g:'cn'},
+  {id:'wordgroup', zh:'语序选词', en:'Word Group', g:'cn'},
+
+  {id:'math', zh:'算术验证', en:'Arithmetic', g:'mixed'},
+  {id:'spatial', zh:'空间推理', en:'Spatial Reasoning', g:'mixed'},
+
+  {id:'drag', zh:'拖拽排序', en:'Drag Order', g:'global'},
+  {id:'icon', zh:'图标点选', en:'Icon Click', g:'global'},
+  {id:'rotate', zh:'旋转校正', en:'Rotate to Align', g:'global'},
+  {id:'nine', zh:'九宫格', en:'3×3 Grid', g:'global'},
+  {id:'avoid', zh:'障碍躲避', en:'Obstacle Avoidance', g:'global'},
+  {id:'match3', zh:'消消乐', en:'Match-3', g:'global'},
+  {id:'gomoku', zh:'五子棋', en:'Gomoku', g:'global'},
+];
+
+const CHAR_POOL = [
+  {ch:'人',py:'ren'},{ch:'大',py:'da'},{ch:'小',py:'xiao'},{ch:'山',py:'shan'},
+  {ch:'水',py:'shui'},{ch:'火',py:'huo'},{ch:'木',py:'mu'},{ch:'田',py:'tian'},
+  {ch:'日',py:'ri'},{ch:'月',py:'yue'},{ch:'心',py:'xin'},{ch:'手',py:'shou'},
+  {ch:'口',py:'kou'},{ch:'女',py:'nv'},{ch:'子',py:'zi'},{ch:'门',py:'men'},
+  {ch:'耳',py:'er'},{ch:'牛',py:'niu'},{ch:'羊',py:'yang'},{ch:'马',py:'ma'},
+  {ch:'鱼',py:'yu'},{ch:'鸟',py:'niao'},{ch:'虫',py:'chong'},{ch:'土',py:'tu'}
+];
+
+const IDIOMS = [
+  {full:'画蛇添足', blank:1, options:['蛇','鱼','虎','鸟'], gloss:'draw a snake and add feet — an unnecessary, spoiling addition'},
+  {full:'守株待兔', blank:3, options:['兔','鹿','羊','马'], gloss:'guard a tree stump waiting for a rabbit — relying on a lucky fluke instead of effort'},
+  {full:'狐假虎威', blank:2, options:['虎','狼','豹','象'], gloss:"the fox borrows the tiger's fierceness — bullying others using a superior's authority"},
+  {full:'掩耳盗铃', blank:3, options:['铃','钟','鼓','锣'], gloss:'cover your ears while stealing a bell — self-deception'},
+  {full:'对牛弹琴', blank:1, options:['牛','马','羊','猪'], gloss:'play the lute to a cow — wasted explanation on the wrong audience'},
+  {full:'杯弓蛇影', blank:1, options:['弓','箭','刀','剑'], gloss:"a bow's reflection in a cup mistaken for a snake — needless paranoia"},
+  {full:'亡羊补牢', blank:1, options:['羊','牛','马','鸡'], gloss:'mend the pen after the sheep is lost — fixing a problem late is still worthwhile'},
+  {full:'井底之蛙', blank:3, options:['蛙','鱼','龟','蛇'], gloss:'a frog at the bottom of a well — limited by a narrow point of view'},
+];
+
+const SENTENCES = [
+  {words:['我','每天','喝','咖啡'], en:'I drink coffee every day'},
+  {words:['他','昨天','去了','学校'], en:'He went to school yesterday'},
+  {words:['这个','苹果','很','甜'], en:'This apple is very sweet'},
+  {words:['我们','明天','一起','吃饭'], en:"We'll eat together tomorrow"},
+  {words:['她','喜欢','看','电影'], en:'She likes watching movies'},
+  {words:['今天','天气','很','好'], en:'The weather is good today'},
+];
+
+const NUMWORDS = ['零','一','二','三','四','五','六','七','八','九','十'];
+
+const ICONS = [
+  {i:'🌂',zh:'雨伞'},{i:'🔑',zh:'钥匙'},{i:'✂️',zh:'剪刀'},{i:'🔔',zh:'铃铛'},
+  {i:'🎈',zh:'气球'},{i:'⌚',zh:'手表'},{i:'📎',zh:'回形针'},{i:'🍎',zh:'苹果'},
+  {i:'🚲',zh:'自行车'},{i:'🕯️',zh:'蜡烛'},{i:'🧦',zh:'袜子'},{i:'🔨',zh:'锤子'}
+];
+
+const WORDGROUPS = [
+  {words:['妈妈','在','厨房','做饭'], en:'Mum is cooking in the kitchen'},
+  {words:['学生','认真','听','老师'], en:'The students listen attentively to the teacher'},
+  {words:['小狗','在','院子里','跑'], en:'The puppy runs in the yard'},
+  {words:['爸爸','开车','去','公司'], en:'Dad drives to the office'},
+];
+
+const REFS = {
+  drag: {
+    scope:'<b>Not China-specific.</b> Slider/drag puzzles are global — Capy (Japan), hCaptcha, Arkose. The pinyin-ordering task in this module is a teaching exercise I built, not a shipping product; the real Chinese equivalent is 滑动拼图 (slide-to-fit a puzzle notch).',
+    vendors:'极验 GeeTest (滑动) · 网易易盾 NetEase Yidun (滑动拼图) · 腾讯防水墙 Tencent Captcha · 顶象 Dingxiang · 数美 Ishumei · 阿里云 Alibaba Cloud',
+    title:'MCA-Bench: A Multimodal Benchmark for Evaluating CAPTCHA Robustness Against VLM-based Attacks',
+    authors:'Zonglin Wu, Yule Xue, Yaoyao Feng, Xiaolong Wang, Yiren Song (2025)',
+    venue:'arXiv preprint',
+    doi:'10.48550/arXiv.2506.05982',
+    doiUrl:'https://doi.org/10.48550/arXiv.2506.05982',
+    pdf:'https://arxiv.org/pdf/2506.05982',
+    note:'Benchmarks slider and drag-style challenges alongside other categories. Finds slider/drag puzzles the most attack-resistant type tested, because validation rests on the movement trajectory rather than on recognising the image.'
+  },
+  click: {
+    scope:'<b>China-specific.</b> Requires reading Chinese characters, so it does not port to other markets \u2014 the single most characteristic Chinese type. At Realistic difficulty this module also covers the inverted/flipped-glyph variant (\u5012\u7acb), which vendors ship as a hardness setting inside 文字点选 rather than as a separate product.',
+    vendors:'极验 GeeTest (文字点选) · 网易易盾 NetEase Yidun (文字点选) · 腾讯防水墙 Tencent Captcha (TouClick) · 顶象 Dingxiang · 数美 Ishumei · 阿里云 Alibaba Cloud',
+    title:'Towards Evaluating the Security of Real-World Deployed Image CAPTCHAs',
+    authors:'Binbin Zhao, Haiqin Weng, Shouling Ji, Jianhai Chen, Ting Wang, Qinming He, Raheem Beyah (2018)',
+    venue:'AISec \'18 — 11th ACM Workshop on Artificial Intelligence and Security',
+    doi:'10.1145/3270101.3270104',
+    doiUrl:'https://doi.org/10.1145/3270101.3270104',
+    pdf:'https://par.nsf.gov/servlets/purl/10095517',
+    note:'Directly attacks Geetest TouClick and Tencent TouClick — the two click-in-sequence schemes you meet most often. Trains a character recogniser on 3,750 common Chinese characters rendered in 16 fonts, plus per-vendor detection models. ACM is paywalled; the linked copy is the NSF public-access mirror.'
+  },
+  phrase: {
+    scope:'<b>China-specific.</b> Depends on 成语 knowledge. Less common than character-click and often a CMS plugin rather than a major vendor SKU.',
+    vendors:'数美 Ishumei (成语点选) · assorted Chinese CMS plugins (e.g. captcha_idiom). Not offered by GeeTest or Yidun as a named product.',
+    title:'ChID: A Large-scale Chinese IDiom Dataset for Cloze Test',
+    authors:'Chujie Zheng, Minlie Huang, Aixin Sun (2019)',
+    venue:'ACL 2019 / arXiv preprint',
+    doi:'10.48550/arXiv.1906.01265',
+    doiUrl:'https://doi.org/10.48550/arXiv.1906.01265',
+    pdf:'https://arxiv.org/pdf/1906.01265',
+    note:'Over 500K passages with idioms blanked out and plausible decoys supplied — exactly the task this module drills. Machine accuracy trails human accuracy by a wide margin, which is precisely why idiom cloze survives as a CAPTCHA premise. No peer-reviewed paper targets idiom CAPTCHAs directly.'
+  },
+  rotate: {
+    scope:'<b>Not China-specific.</b> Originates in Google\'s 2009 WWW paper and is used worldwide — Arkose Labs FunCaptcha built a whole product on rotation. Chinese vendors adopted it rather than invented it.',
+    vendors:'顶象 Dingxiang (旋转验证) · 百度 Baidu · older 极验 GeeTest builds. Globally: Arkose Labs FunCaptcha, Minteye.',
+    title:"What's Up CAPTCHA? A CAPTCHA Based on Image Orientation",
+    authors:'Rich Gossweiler, Maryam Kamvar, Shumeet Baluja (2009)',
+    venue:'WWW \'09 — 18th International Conference on World Wide Web',
+    doi:'10.1145/1526709.1526822',
+    doiUrl:'https://doi.org/10.1145/1526709.1526822',
+    pdf:'https://research.google.com/pubs/archive/35157.pdf',
+    note:'The origin paper for the rotate-to-upright design that Chinese vendors later adopted. Introduces the filtering step that removes images a machine can already orient, and the social-feedback loop for confirming humans agree on "upright".'
+  },
+  math: {
+    scope:'<b>Mechanic is universal; the rendering is China-specific.</b> Arithmetic CAPTCHAs exist everywhere. What is distinctive is operands and operators written as Chinese numerals and characters (壹/伍, 加/减, 乘以).',
+    vendors:'Chinese government portals rather than commercial vendors: 国家企业信用信息公示系统 (SAIC), 中国人民银行征信中心 (Credit Reference Center), 国家知识产权局 (SIPO). Not a GeeTest/Yidun product.',
+    title:'An Optimized System to Solve Text-based CAPTCHA',
+    authors:'Ye Wang, Mi Lu (2018)',
+    venue:'arXiv preprint (Texas A&M University)',
+    doi:'10.48550/arXiv.1806.07202',
+    doiUrl:'https://doi.org/10.48550/arXiv.1806.07202',
+    pdf:'https://arxiv.org/pdf/1806.07202',
+    note:'Built against arithmetic CAPTCHAs from three Chinese government portals (SAIC, Credit Reference Center, SIPO). Operands appear as simplified Chinese, traditional Chinese, or Arabic numerals, and operators as symbols or one-to-two characters — the paper enumerates all the notation forms.'
+  },
+  sentence: {
+    scope:'<b>China-specific.</b> Scoring depends on Chinese semantics, so it does not translate to other languages.',
+    vendors:'极验 GeeTest (语序点选) · 网易易盾 NetEase Yidun (语序点选)',
+    title:'Usability Investigation on the Localization of Text CAPTCHAs: Take Chinese Characters as a Case Study',
+    authors:'Junnan Yu, Xuna Ma, Ting Han (2016)',
+    venue:'arXiv preprint',
+    doi:'10.48550/arXiv.1612.01070',
+    doiUrl:'https://doi.org/10.48550/arXiv.1612.01070',
+    pdf:'https://arxiv.org/pdf/1612.01070',
+    note:'语序点选 is a shipping NetEase Yidun product, marketed for high-security deployments because it pairs semantic understanding with trajectory analysis. No paper targets it directly; this is the closest relevant work, measuring how solving time and accuracy shift for Chinese-character challenges versus alphanumeric ones.'
+  },
+  icon: {
+    scope:'<b>Not China-specific.</b> Icon-click is language-neutral by design — that is its selling point, since it works across markets without localisation. Widely used outside China too.',
+    vendors:'极验 GeeTest (图标点选, which their own docs rate the hardest of their eight forms) · 网易易盾 NetEase Yidun (图标点选) · 顶象 Dingxiang',
+    title:'Learning to Associate Words and Images Using a Large-scale Graph',
+    authors:'Heqing Ya, Haonan Sun, Jeffrey Helt, Tai Sing Lee (2017)',
+    venue:'arXiv preprint / 14th Conference on Computer and Robot Vision',
+    doi:'10.48550/arXiv.1705.07768',
+    doiUrl:'https://doi.org/10.48550/arXiv.1705.07768',
+    pdf:'https://arxiv.org/pdf/1705.07768',
+    note:'Attacks the 12306.cn railway CAPTCHA, which is exactly this task: a Chinese noun is shown (企鹅, 蜡烛) and the solver must pick every image matching it. The paper builds a word-image association graph rather than a classifier, because the vocabulary is open-ended — the same property that makes icon-click hard to brute-force.'
+  },
+  wordgroup: {
+    scope:'<b>China-specific.</b> Same semantic premise as word-order click, with a selection step layered on.',
+    vendors:'网易易盾 NetEase Yidun (语序选词). GeeTest does not list this as a separate form.',
+    title:'ChID: A Large-scale Chinese IDiom Dataset for Cloze Test',
+    authors:'Chujie Zheng, Minlie Huang, Aixin Sun (2019)',
+    venue:'ACL 2019 / arXiv preprint',
+    doi:'10.48550/arXiv.1906.01265',
+    doiUrl:'https://doi.org/10.48550/arXiv.1906.01265',
+    pdf:'https://arxiv.org/pdf/1906.01265',
+    note:'Shares this citation with the idiom module, deliberately: both tasks are pick-the-right-Chinese-from-plausible-decoys, which is the exact structure ChID formalises. No paper studies 语序选词 directly. The relevant number is the gap ChID reports between machine and human accuracy — that gap is the whole security premise here.'
+  },
+  spatial: {
+    scope:'<b>Mechanic is not China-specific</b> — spatial reasoning tests are language-neutral and appear in Western research CAPTCHAs too. But the productised version is currently most visible in Chinese vendor catalogues.',
+    vendors:'网易易盾 NetEase Yidun (空间推理) · 极验 GeeTest (空间推理)',
+    title:'Spatial CAPTCHA: Generatively Benchmarking Spatial Reasoning for Human-Machine Differentiation',
+    authors:'Arina Kharlamova and three other authors (2025)',
+    venue:'arXiv preprint',
+    doi:'10.48550/arXiv.2510.03863',
+    doiUrl:'https://doi.org/10.48550/arXiv.2510.03863',
+    pdf:'https://arxiv.org/pdf/2510.03863',
+    note:'Builds challenges around mental rotation, perspective-taking and occlusion — the same cognitive load Yidun 空间推理 leans on. Humans far outperformed ten leading multimodal models, the best managing only 31.0% Pass@1.'
+  },
+  avoid: {
+    scope:'<b>Not China-specific.</b> Game-style behavioural CAPTCHAs (Gametrics, DCG schemes) are a research and commercial category worldwide. Yidun\'s is one productised instance.',
+    vendors:'网易易盾 NetEase Yidun (障碍躲避). Related game forms: 极验 GeeTest 消消乐 (match-3) and 五子棋 (gomoku).',
+    title:'Human-artificial intelligence approaches for secure analysis in CAPTCHA codes',
+    authors:'Nghia Dinh, Lidia Ogiela (2022)',
+    venue:'EURASIP Journal on Information Security, vol. 2022, article 8 — open access',
+    doi:'10.1186/s13635-022-00134-9',
+    doiUrl:'https://doi.org/10.1186/s13635-022-00134-9',
+    pdf:'https://link.springer.com/content/pdf/10.1186/s13635-022-00134-9.pdf',
+    note:'Surveys the cognitive/behavioural family this challenge belongs to, including Gametrics, which separates humans from bots purely by the mouse movement recorded while a dynamic cognitive game is played. It also gives the counterpoint: Zhao et al. bypassed Geetest and NetEase sliding schemes at 96% and 98% by fitting simulation functions to human motion, so trajectory checks raise the cost of automation without ending it.'
+  },
+  match3: {
+    scope:'<b>Not China-specific.</b> Match-3 as a CAPTCHA belongs to the Dynamic Cognitive Game family studied in the West years earlier (the startup "Are You A Human" built a product on it). GeeTest\'s own docs put it in their weaker Class II tier — good experience, limited resistance.',
+    vendors:'极验 GeeTest (消消乐) only, among the major Chinese vendors. Not offered by NetEase Yidun, Tencent or Dingxiang. Historically: Are You A Human (US, defunct).',
+    title:'Three-Way Dissection of a Game-CAPTCHA: Automated Attacks, Relay Attacks, and Usability',
+    authors:'Manar Mohamed, Niharika Sachdeva, Michael Georgescu, Song Gao, Nitesh Saxena, Chengcui Zhang, Ponnurangam Kumaraguru, Paul C. van Oorschot, Wei-Bang Chen (2013)',
+    venue:'arXiv preprint / ASIACCS \'14',
+    doi:'10.48550/arXiv.1310.1540',
+    doiUrl:'https://doi.org/10.48550/arXiv.1310.1540',
+    pdf:'https://arxiv.org/pdf/1310.1540',
+    note:'The formal treatment of game CAPTCHAs. Finds they score well on usability and, unusually, offer some resistance to human-solver relay attacks — but fall to a dictionary-based automated attack. That trade-off explains why GeeTest keeps match-3 as a low-friction option rather than a high-security one.'
+  },
+  gomoku: {
+    scope:'<b>Not China-specific.</b> Gomoku (五子棋) is culturally East Asian but the task is pure pattern-spotting on a board — no language involved. Also Class II in GeeTest\'s own security ranking.',
+    vendors:'极验 GeeTest (五子棋; appears as risk type "winlinze" in their v4 API) only. No other major Chinese vendor ships it.',
+    title:'Reasoning under Vision: Understanding Visual-Spatial Cognition in Vision-Language Models for CAPTCHA',
+    authors:'Python Song and four other authors (2025)',
+    venue:'arXiv preprint (CAPTCHA-X benchmark)',
+    doi:'10.48550/arXiv.2510.06067',
+    doiUrl:'https://doi.org/10.48550/arXiv.2510.06067',
+    pdf:'https://arxiv.org/pdf/2510.06067',
+    note:'Names Gobang (五子棋) explicitly as one of its seven benchmarked CAPTCHA categories. Reports roughly 21.9% baseline accuracy for commercial vision-language models on these categories without step-by-step reasoning, rising sharply once reasoning is forced — relevant because board-reading is exactly the kind of task that collapses under chain-of-thought prompting.'
+  },
+  nine: {
+    scope:'<b>Not China-specific at all.</b> This is the reCAPTCHA grid pattern, and Google shipped it first. Chinese vendors implement the same mechanic with their own image sets. GeeTest rates it Class III (strong).',
+    vendors:'极验 GeeTest (九宫格; risk type "nine") · conceptually identical to Google reCAPTCHA v2 image challenges and hCaptcha grids used worldwide.',
+    title:'I Am Robot: (Deep) Learning to Break Semantic Image CAPTCHAs',
+    authors:'Suphannee Sivakorn, Iasonas Polakis, Angelos D. Keromytis (2016)',
+    venue:'1st IEEE European Symposium on Security and Privacy (EuroS&P \'16)',
+    doi:'10.1109/EuroSP.2016.37',
+    doiUrl:'https://doi.org/10.1109/EuroSP.2016.37',
+    pdf:'http://www.cs.columbia.edu/~polakis/papers/sivakorn_eurosp16.pdf',
+    note:'The canonical attack on grid-selection challenges. Its more useful finding for OSINT work is not the image classifier but the risk-analysis side: aged tracking cookies materially changed which challenge difficulty was served, meaning your browsing history shapes the CAPTCHA you get. The IEEE page is paywalled; the author copy at Columbia is not.'
+  }
+};
+
+function renderCitation(parent, key){
+  const r = REFS[key];
+  if(r.scope){
+    const dep = el('div','deploy');
+    dep.innerHTML = `
+      <div class="cite-head">Who deploys this</div>
+      <div style="margin-bottom:8px">${r.vendors}</div>
+      <div class="deploy-scope">${r.scope}</div>`;
+    parent.appendChild(dep);
+  }
+  const box = el('div','citation');
+  box.innerHTML = `
+    <div class="cite-head">Research reference</div>
+    <div class="cite-title">${r.title}</div>
+    <div>${r.authors}</div>
+    <div>${r.venue}</div>
+    <div><a href="${r.doiUrl}" target="_blank" rel="noopener">doi:${r.doi}</a> · <a href="${r.pdf}" target="_blank" rel="noopener">Open-access PDF</a></div>
+    <div class="cite-note">${r.note}</div>`;
+  parent.appendChild(box);
+}
+
+let current = 'click';
+let streak = {drag:0, click:0, phrase:0, rotate:0, math:0, sentence:0, icon:0, wordgroup:0, spatial:0, avoid:0, match3:0, gomoku:0, nine:0};
+let animToken = 0;
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function pickN(arr,n){ return shuffle(arr).slice(0,n); }
+function el(tag, cls, html){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(html!==undefined) e.innerHTML = html;
+  return e;
+}
+
+// ---------- background + distortion engine ----------
+let difficulty = 'clean'; // clean | light | real
+
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// Paints a photographic-ish backdrop with no external asset.
+function makeBg(seed, w, h){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d', {willReadFrequently:true});
+  const r = mulberry32(seed);
+  const h1 = Math.floor(r()*360), h2 = (h1 + 60 + Math.floor(r()*160)) % 360;
+  const g = x.createLinearGradient(0, 0, w, h);
+  g.addColorStop(0, `hsl(${h1},42%,58%)`);
+  g.addColorStop(1, `hsl(${h2},38%,44%)`);
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+  const blobs = 22 + Math.floor(r()*14);
+  for(let i=0;i<blobs;i++){
+    const cx = r()*w, cy = r()*h, rad = 10 + r()*(Math.min(w,h)*0.55);
+    const hh = (h1 + r()*220) % 360;
+    const rg = x.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    rg.addColorStop(0, `hsla(${hh},58%,${26+r()*52}%,0.5)`);
+    rg.addColorStop(1, `hsla(${hh},58%,50%,0)`);
+    x.fillStyle = rg;
+    x.beginPath(); x.arc(cx, cy, rad, 0, 6.2832); x.fill();
+  }
+  const img = x.getImageData(0,0,w,h), d = img.data;
+  for(let i=0;i<d.length;i+=4){
+    const n = (r()-0.5)*36;
+    d[i]+=n; d[i+1]+=n; d[i+2]+=n;
+  }
+  x.putImageData(img, 0, 0);
+  return { url: c.toDataURL(), ctx: x, w, h };
+}
+
+function sampleLum(bg, px, py){
+  if(!bg) return 1;
+  const x = Math.max(0, Math.min(bg.w-1, Math.round(px)));
+  const y = Math.max(0, Math.min(bg.h-1, Math.round(py)));
+  const d = bg.ctx.getImageData(x, y, 1, 1).data;
+  return (0.299*d[0] + 0.587*d[1] + 0.114*d[2]) / 255;
+}
+
+// Transform + colour for one glyph, scaled to the current difficulty.
+function glyphStyle(bg, px, py, r, opts){
+  opts = opts || {};
+  if(difficulty === 'clean') return { transform:'', color:'var(--ink)', shadow:'none', flipped:false };
+  const hard = difficulty === 'real';
+  const rot = (r()*2-1) * (hard ? 34 : 14);
+  const skew = (r()*2-1) * (hard ? 11 : 4);
+  const scale = 1 + (r()*2-1) * (hard ? 0.2 : 0.09);
+  let flipped = false, extra = '';
+  if(hard && opts.allowFlip && r() < (opts.flipRate || 0.28)){
+    flipped = true;
+    extra = r() < 0.5 ? ' rotate(180deg)' : ' scaleX(-1)';
+  }
+  const lum = sampleLum(bg, px, py);
+  // Real widgets keep glyph and background close in tone. Realistic mode narrows the gap.
+  const light = lum < 0.5;
+  const push = hard ? 26 : 46;
+  const v = light ? Math.min(100, 58 + push) : Math.max(0, 42 - push);
+  const hue = Math.floor(r()*360);
+  return {
+    transform: `rotate(${rot.toFixed(1)}deg) skewX(${skew.toFixed(1)}deg) scale(${scale.toFixed(2)})${extra}`,
+    color: `hsl(${hue}, ${hard?28:14}%, ${v}%)`,
+    shadow: light ? '0 1px 2px rgba(0,0,0,0.55)' : '0 1px 2px rgba(255,255,255,0.5)',
+    flipped
+  };
+}
+
+// Non-overlapping random placement inside a stage.
+function scatterPositions(n, w, h, size, r){
+  const pts = [], minD = size * 1.05;
+  let guard = 0;
+  while(pts.length < n && guard++ < 4000){
+    const x = 4 + r()*(w - size - 8);
+    const y = 4 + r()*(h - size - 8);
+    if(pts.every(p => Math.hypot(p.x-x, p.y-y) >= minD)) pts.push({x,y});
+  }
+  while(pts.length < n){ // fallback grid if packing failed
+    const i = pts.length, cols = Math.floor(w/size);
+    pts.push({ x: (i%cols)*size + 4, y: Math.floor(i/cols)*size + 4 });
+  }
+  return pts;
+}
+
+// Stage with backdrop; returns {el, bg, r}
+function makeStage(w, h, seed){
+  const r = mulberry32(seed);
+  const bg = difficulty === 'clean' ? null : makeBg(seed, w, h);
+  const stage = el('div','stage');
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+  if(bg) stage.style.backgroundImage = `url(${bg.url})`;
+  return { el: stage, bg, r };
+}
+
+function backdrop(node, w, h, seed){
+  if(difficulty === 'clean') return null;
+  const bg = makeBg(seed, w, h);
+  node.style.backgroundImage = `url(${bg.url})`;
+  node.style.backgroundSize = 'cover';
+  return bg;
+}
+
+// ---------- nav ----------
+const navEl = document.getElementById('nav');
+GROUPS.forEach((g, gi)=>{
+  const sec = document.createElement('div');
+  sec.className = 'nav-group' + (gi===0 ? ' first' : '');
+  const head = document.createElement('div');
+  head.className = 'nav-group-head';
+  head.innerHTML = `<span class="ngh-label">${g.label}</span><span class="ngh-sub">${g.sub}</span>`;
+  sec.appendChild(head);
+  const row = document.createElement('div');
+  row.className = 'nav-row';
+  MODULES.filter(m=>m.g===g.id).forEach(m=>{
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="zh cjk">${m.zh}</span><span>${m.en}</span>`;
+    b.onclick = ()=>{ current = m.id; render(); };
+    b.dataset.id = m.id;
+    row.appendChild(b);
+  });
+  sec.appendChild(row);
+  navEl.appendChild(sec);
+});
+
+const LEVELS = [
+  {id:'clean', label:'Clean', hint:'upright glyphs, no backdrop'},
+  {id:'light', label:'Light distortion', hint:'backdrop, mild tilt, readable contrast'},
+  {id:'real',  label:'Realistic', hint:'backdrop, heavy tilt/skew, flips, low contrast'},
+];
+const toolbarEl = document.getElementById('toolbar');
+function buildToolbar(){
+  toolbarEl.innerHTML = '';
+  toolbarEl.appendChild(el('span','','Difficulty:'));
+  LEVELS.forEach(l=>{
+    const b = document.createElement('button');
+    b.textContent = l.label;
+    if(l.id===difficulty) b.classList.add('on');
+    b.onclick = ()=>{ difficulty = l.id; buildToolbar(); render(); };
+    toolbarEl.appendChild(b);
+  });
+  const hint = LEVELS.find(l=>l.id===difficulty).hint;
+  toolbarEl.appendChild(el('span','', '— ' + hint));
+}
+buildToolbar();
+
+function setActiveNav(){  [...navEl.querySelectorAll('button')].forEach(b=>{
+    b.classList.toggle('active', b.dataset.id===current);
+  });
+}
+
+function render(){
+  animToken++;
+  setActiveNav();
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+  const streakLine = el('div','streak', `Solved: ${streak[current]}`);
+  main.appendChild(streakLine);
+  ({
+    drag: renderDrag,
+    click: renderClick,
+    phrase: renderPhrase,
+    rotate: renderRotate,
+    math: renderMath,
+    sentence: renderSentence,
+    icon: renderIcon,
+    wordgroup: renderWordGroup,
+    spatial: renderSpatial,
+    avoid: renderAvoid,
+    match3: renderMatch3,
+    gomoku: renderGomoku,
+    nine: renderNine,
+  })[current](main);
+  renderCitation(main, current);
+}
+
+// ---------- 1. Drag order (pinyin alphabetical, tap-to-swap) ----------
+function renderDrag(main){
+  const set = pickN(CHAR_POOL, 4);
+  const correctOrder = [...set].sort((a,b)=>a.py.localeCompare(b.py));
+  let order = shuffle(set);
+  let selectedIdx = null;
+
+  const title = el('p','module-title','拖拽排序 · Drag Order');
+  const instr = el('p','module-instruction cjk','Tap two tiles to swap them until they read left-to-right in <b>pinyin alphabetical order</b> (a → z).');
+  main.appendChild(title); main.appendChild(instr);
+
+  const panel = el('div','panel');
+  const row = el('div','char-row');
+  if(difficulty !== 'clean'){
+    const db = makeBg(Math.floor(Math.random()*1e9), 300, 70);
+    row.style.backgroundImage = `url(${db.url})`;
+    row.style.backgroundSize = 'cover';
+    row.style.padding = '10px 6px';
+  }
+  panel.appendChild(row);
+  main.appendChild(panel);
+
+  const feedback = el('div','feedback');
+  const controls = el('div','controls');
+  const checkBtn = el('button','action','Check order');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(checkBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  main.appendChild(feedback);
+
+  function draw(){
+    row.innerHTML='';
+    order.forEach((item, i)=>{
+      const t = el('div','tile cjk', item.ch);
+      if(i===selectedIdx) t.classList.add('selected');
+      t.onclick = ()=>{
+        if(selectedIdx===null){ selectedIdx=i; }
+        else if(selectedIdx===i){ selectedIdx=null; }
+        else{ [order[selectedIdx], order[i]] = [order[i], order[selectedIdx]]; selectedIdx=null; }
+        draw();
+      };
+      row.appendChild(t);
+    });
+  }
+  draw();
+
+  checkBtn.onclick = ()=>{
+    const ok = order.every((item,i)=>item.ch===correctOrder[i].ch);
+    if(ok){
+      feedback.textContent = 'Correct — that is ascending pinyin order.';
+      feedback.className = 'feedback ok';
+      streak.drag++; streakLine.textContent = `Solved: ${streak.drag}`;
+    } else {
+      feedback.textContent = 'Not quite — order is: ' + correctOrder.map(c=>`${c.ch}(${c.py})`).join(' → ');
+      feedback.className = 'feedback bad';
+    }
+  };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 2. Click sequence ----------
+function renderClick(main){
+  const seed = Math.floor(Math.random()*1e9);
+  const targets = pickN(CHAR_POOL, 4);
+  const distractors = pickN(CHAR_POOL.filter(c=>!targets.includes(c)), 5);
+  const items = shuffle([...targets, ...distractors]);
+  let clicked = [];
+
+  main.appendChild(el('p','module-title','\u6587\u5b57\u70b9\u9009 \u00b7 Click Sequence'));
+  main.appendChild(el('p','module-instruction','Click the characters scattered on the image, in the order the strip below shows.'));
+
+  const W = 300, H = 190, SZ = 44;
+  const st = makeStage(W, H, seed);
+  const panel = el('div','panel');
+  panel.appendChild(st.el);
+
+  const strip = el('div','prompt-strip cjk');
+  strip.innerHTML = '\u8bf7\u4f9d\u6b21\u70b9\u51fb\uff1a<span style="letter-spacing:0.35em">' + targets.map(t=>t.ch).join('') + '</span>';
+  panel.appendChild(strip);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const resetBtn = el('button','action secondary','Reset');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(resetBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  const pts = scatterPositions(items.length, W, H, SZ, mulberry32(seed ^ 0x9e37));
+  const styles = items.map((it,i)=>glyphStyle(st.bg, pts[i].x+SZ/2, pts[i].y+SZ/2, mulberry32(seed + i*7919), {allowFlip:true, flipRate:0.3}));
+
+  function draw(){
+    st.el.innerHTML = '';
+    items.forEach((item,i)=>{
+      const node = el('div','scatter cjk');
+      node.style.left = pts[i].x + 'px';
+      node.style.top = pts[i].y + 'px';
+      node.style.width = SZ + 'px';
+      node.style.height = SZ + 'px';
+      node.style.fontSize = '30px';
+      node.style.transform = styles[i].transform;
+      node.style.color = styles[i].color;
+      node.style.textShadow = styles[i].shadow;
+      node.textContent = item.ch;
+      node.appendChild(el('div','hitpad'));
+      const idx = clicked.indexOf(item);
+      if(idx>-1){ node.classList.add('gone'); node.appendChild(el('div','seq', idx+1)); }
+      node.onclick = ()=>{
+        if(clicked.includes(item)) return;
+        clicked.push(item);
+        draw();
+        if(clicked.length===targets.length) check();
+      };
+      st.el.appendChild(node);
+    });
+  }
+  function check(){
+    const ok = clicked.every((c,i)=>c===targets[i]);
+    if(ok){
+      feedback.textContent = 'Correct sequence.';
+      feedback.className='feedback ok';
+      streak.click++; streakLine.textContent = `Solved: ${streak.click}`;
+    } else {
+      feedback.textContent = 'Wrong order. Correct: ' + targets.map(t=>t.ch).join(' \u2192 ');
+      feedback.className='feedback bad';
+    }
+  }
+  draw();
+  resetBtn.onclick = ()=>{ clicked=[]; feedback.textContent=''; draw(); };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 3. Complete the phrase ----------
+function renderPhrase(main){
+  const idiom = IDIOMS[Math.floor(Math.random()*IDIOMS.length)];
+  const opts = shuffle(idiom.options);
+  let picked = null;
+
+  const title = el('p','module-title','补全成语 · Complete the Phrase');
+  const instr = el('p','module-instruction','Choose the missing character to complete this idiom (<span class="cjk">成语</span>):');
+  main.appendChild(title); main.appendChild(instr);
+
+  const panel = el('div','panel');
+  const seedP = Math.floor(Math.random()*1e9);
+  const stP = makeStage(280, 76, seedP);
+  stP.el.style.display='flex';
+  stP.el.style.alignItems='center';
+  stP.el.style.justifyContent='center';
+  stP.el.style.gap='10px';
+  const rp = mulberry32(seedP ^ 0x2b1d);
+  idiom.full.split('').forEach((c,i)=>{
+    const gs = glyphStyle(stP.bg, 40+i*60, 38, mulberry32(seedP + i*911), {allowFlip:true, flipRate:0.18});
+    const t = el('div','cjk', i===idiom.blank ? '？' : c);
+    t.style.fontSize='30px';
+    t.style.transform = gs.transform;
+    t.style.color = i===idiom.blank ? 'var(--seal)' : gs.color;
+    t.style.textShadow = gs.shadow;
+    stP.el.appendChild(t);
+  });
+  panel.appendChild(stP.el);
+  main.appendChild(panel);
+
+  const optGrid = el('div','options-grid');
+  opts.forEach(o=>{
+    const b = el('div','opt cjk', o);
+    b.onclick = ()=>{
+      picked = o;
+      [...optGrid.children].forEach(c=>c.classList.remove('picked'));
+      b.classList.add('picked');
+    };
+    optGrid.appendChild(b);
+  });
+  main.appendChild(optGrid);
+
+  const controls = el('div','controls');
+  const checkBtn = el('button','action','Check');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(checkBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+
+  const feedback = el('div','feedback');
+  const translation = el('div','translation');
+  main.appendChild(feedback);
+  main.appendChild(translation);
+
+  checkBtn.onclick = ()=>{
+    if(!picked){ feedback.textContent='Pick a character first.'; feedback.className='feedback bad'; return; }
+    const correct = idiom.full[idiom.blank];
+    if(picked===correct){
+      feedback.textContent = `Correct — ${idiom.full}`;
+      feedback.className='feedback ok';
+      translation.textContent = idiom.gloss;
+      streak.phrase++; streakLine.textContent = `Solved: ${streak.phrase}`;
+    } else {
+      feedback.textContent = `Not quite — the idiom is ${idiom.full}`;
+      feedback.className='feedback bad';
+      translation.textContent = idiom.gloss;
+    }
+  };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 4. Rotate to align ----------
+function renderRotate(main){
+  const item = CHAR_POOL[Math.floor(Math.random()*CHAR_POOL.length)];
+  const startRotations = [90,180,270];
+  let rotation = startRotations[Math.floor(Math.random()*startRotations.length)];
+
+  const title = el('p','module-title','旋转校正 · Rotate to Align');
+  const instr = el('p','module-instruction','Rotate the character until it sits upright.');
+  main.appendChild(title); main.appendChild(instr);
+
+  const panel = el('div','panel');
+  const stage = el('div','rotate-stage');
+  const box = el('div','rotate-char cjk', item.ch);
+  box.style.transform = `rotate(${rotation}deg)`;
+  if(difficulty !== 'clean'){
+    const rb = makeBg(Math.floor(Math.random()*1e9), 110, 110);
+    box.style.backgroundImage = `url(${rb.url})`;
+    box.style.backgroundSize = 'cover';
+    box.style.color = '#fbf9f4';
+    box.style.textShadow = '0 2px 4px rgba(0,0,0,0.7)';
+  }
+  stage.appendChild(box);
+  panel.appendChild(stage);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const leftBtn = el('button','action secondary','Rotate 90° left');
+  const rightBtn = el('button','action secondary','Rotate 90° right');
+  const checkBtn = el('button','action','Check');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(leftBtn); controls.appendChild(rightBtn);
+  main.appendChild(controls);
+  const controls2 = el('div','controls');
+  controls2.appendChild(checkBtn); controls2.appendChild(nextBtn);
+  main.appendChild(controls2);
+
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  leftBtn.onclick = ()=>{ rotation = (rotation-90+360)%360; box.style.transform=`rotate(${rotation}deg)`; };
+  rightBtn.onclick = ()=>{ rotation = (rotation+90)%360; box.style.transform=`rotate(${rotation}deg)`; };
+  checkBtn.onclick = ()=>{
+    if(rotation===0){
+      feedback.textContent = 'Upright — correct.';
+      feedback.className='feedback ok';
+      streak.rotate++; streakLine.textContent = `Solved: ${streak.rotate}`;
+    } else {
+      feedback.textContent = 'Not upright yet — keep rotating.';
+      feedback.className='feedback bad';
+    }
+  };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 5. Arithmetic ----------
+function renderMath(main){
+  const a = 1+Math.floor(Math.random()*9);
+  const b = 1+Math.floor(Math.random()*9);
+  const isAdd = Math.random()<0.6 && (a+b<=10);
+  let answer, promptZh;
+  if(isAdd){
+    answer = a+b;
+    promptZh = `${NUMWORDS[a]} 加 ${NUMWORDS[b]} 等于多少？`;
+  } else {
+    const hi = Math.max(a,b), lo = Math.min(a,b);
+    answer = hi-lo;
+    promptZh = `${NUMWORDS[hi]} 减 ${NUMWORDS[lo]} 等于多少？`;
+  }
+  const distractSet = new Set([answer]);
+  while(distractSet.size<4){
+    const d = Math.max(0, answer + (Math.floor(Math.random()*5)-2));
+    distractSet.add(d);
+  }
+  const opts = shuffle([...distractSet]);
+  let picked = null;
+
+  const title = el('p','module-title','算术验证 · Arithmetic');
+  main.appendChild(title);
+  const seedM = Math.floor(Math.random()*1e9);
+  const stM = makeStage(280, 66, seedM);
+  stM.el.style.display='flex';
+  stM.el.style.alignItems='center';
+  stM.el.style.justifyContent='center';
+  stM.el.style.gap='4px';
+  promptZh.split('').forEach((ch,i)=>{
+    const gs = glyphStyle(stM.bg, 24+i*24, 33, mulberry32(seedM + i*7717), {allowFlip:false});
+    const sp = el('span','cjk', ch);
+    sp.style.display='inline-block';
+    sp.style.fontSize='21px';
+    sp.style.transform = gs.transform;
+    sp.style.color = gs.color;
+    sp.style.textShadow = gs.shadow;
+    stM.el.appendChild(sp);
+  });
+  const panelM = el('div','panel');
+  panelM.appendChild(stM.el);
+  main.appendChild(panelM);
+
+  const optGrid = el('div','options-grid');
+  opts.forEach(o=>{
+    const b2 = el('div','opt cjk', NUMWORDS[o] || o);
+    b2.onclick = ()=>{
+      picked = o;
+      [...optGrid.children].forEach(c=>c.classList.remove('picked'));
+      b2.classList.add('picked');
+    };
+    optGrid.appendChild(b2);
+  });
+  main.appendChild(optGrid);
+
+  const controls = el('div','controls');
+  const checkBtn = el('button','action','Check');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(checkBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  checkBtn.onclick = ()=>{
+    if(picked===null){ feedback.textContent='Pick an answer first.'; feedback.className='feedback bad'; return; }
+    if(picked===answer){
+      feedback.textContent = `Correct — ${NUMWORDS[answer]} (${answer})`;
+      feedback.className='feedback ok';
+      streak.math++; streakLine.textContent = `Solved: ${streak.math}`;
+    } else {
+      feedback.textContent = `Not quite — the answer is ${NUMWORDS[answer]} (${answer})`;
+      feedback.className='feedback bad';
+    }
+  };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 6. Sentence order ----------
+function renderSentence(main){
+  const seed = Math.floor(Math.random()*1e9);
+  const sdef = SENTENCES[Math.floor(Math.random()*SENTENCES.length)];
+  const items = shuffle(sdef.words.map((w,i)=>({w,i})));
+  let built = [];
+
+  main.appendChild(el('p','module-title','\u8bed\u5e8f\u70b9\u9009 \u00b7 Sentence Order'));
+  main.appendChild(el('p','module-instruction','Click the words on the image in the order that makes a grammatical sentence.'));
+
+  const built_el = el('div','built-sentence cjk','\u00A0');
+  main.appendChild(built_el);
+
+  const W = 300, H = 175, SZ = 62;
+  const st = makeStage(W, H, seed);
+  const panel = el('div','panel');
+  panel.appendChild(st.el);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const resetBtn = el('button','action secondary','Reset');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(resetBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  const translation = el('div','translation');
+  main.appendChild(feedback); main.appendChild(translation);
+
+  const pts = scatterPositions(items.length, W, H, SZ, mulberry32(seed ^ 0x1d3a));
+  const styles = items.map((it,i)=>glyphStyle(st.bg, pts[i].x+SZ/2, pts[i].y+SZ/2, mulberry32(seed + i*3571), {allowFlip:false}));
+
+  function draw(){
+    st.el.innerHTML='';
+    items.forEach((item,i)=>{
+      const node = el('div','scatter cjk');
+      node.style.left = pts[i].x+'px'; node.style.top = pts[i].y+'px';
+      node.style.width = SZ+'px'; node.style.height = '30px';
+      node.style.fontSize = '18px';
+      node.style.transform = styles[i].transform;
+      node.style.color = styles[i].color;
+      node.style.textShadow = styles[i].shadow;
+      node.textContent = item.w;
+      node.appendChild(el('div','hitpad'));
+      const idx = built.indexOf(item);
+      if(idx>-1){ node.classList.add('gone'); node.appendChild(el('div','seq', idx+1)); }
+      node.onclick = ()=>{
+        if(built.includes(item)) return;
+        built.push(item);
+        built_el.textContent = built.map(b=>b.w).join('');
+        draw();
+        if(built.length===items.length) check();
+      };
+      st.el.appendChild(node);
+    });
+  }
+  function check(){
+    const ok = built.every((b,i)=>b.i===i);
+    if(ok){
+      feedback.textContent='Correct sentence.'; feedback.className='feedback ok';
+      translation.textContent = sdef.en;
+      streak.sentence++; streakLine.textContent = `Solved: ${streak.sentence}`;
+    } else {
+      feedback.textContent='Word order is off. Correct: ' + sdef.words.join('');
+      feedback.className='feedback bad';
+      translation.textContent = sdef.en;
+    }
+  }
+  draw();
+  resetBtn.onclick = ()=>{ built=[]; built_el.textContent='\u00A0'; feedback.textContent=''; translation.textContent=''; draw(); };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 7. Icon click ----------
+function renderIcon(main){
+  const seed = Math.floor(Math.random()*1e9);
+  const targets = pickN(ICONS, 3);
+  const distractors = pickN(ICONS.filter(c=>!targets.includes(c)), 6);
+  const items = shuffle([...targets, ...distractors]);
+  let clicked = [];
+
+  main.appendChild(el('p','module-title','\u56fe\u6807\u70b9\u9009 \u00b7 Icon Click'));
+  main.appendChild(el('p','module-instruction','The prompt names the icons in Chinese only. Work out which is which, then click them in order.'));
+
+  const W = 300, H = 190, SZ = 46;
+  const st = makeStage(W, H, seed);
+  const panel = el('div','panel');
+  panel.appendChild(st.el);
+  const strip = el('div','prompt-strip cjk', '\u8bf7\u4f9d\u6b21\u70b9\u51fb\uff1a' + targets.map(t=>t.zh).join('\u3001'));
+  panel.appendChild(strip);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const resetBtn = el('button','action secondary','Reset');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(resetBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  const pts = scatterPositions(items.length, W, H, SZ, mulberry32(seed ^ 0x5bf0));
+  const styles = items.map((it,i)=>glyphStyle(st.bg, pts[i].x+SZ/2, pts[i].y+SZ/2, mulberry32(seed + i*104729), {allowFlip:false}));
+
+  function draw(){
+    st.el.innerHTML = '';
+    items.forEach((item,i)=>{
+      const node = el('div','scatter');
+      node.style.left = pts[i].x + 'px';
+      node.style.top = pts[i].y + 'px';
+      node.style.width = SZ + 'px';
+      node.style.height = SZ + 'px';
+      node.style.fontSize = '30px';
+      node.style.transform = styles[i].transform;
+      node.style.filter = difficulty==='real' ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none';
+      node.textContent = item.i;
+      node.appendChild(el('div','hitpad'));
+      const idx = clicked.indexOf(item);
+      if(idx>-1){ node.classList.add('gone'); node.appendChild(el('div','seq', idx+1)); }
+      node.onclick = ()=>{
+        if(clicked.includes(item)) return;
+        clicked.push(item);
+        draw();
+        if(clicked.length===targets.length) check();
+      };
+      st.el.appendChild(node);
+    });
+  }
+  function check(){
+    const ok = clicked.every((c,i)=>c===targets[i]);
+    if(ok){
+      feedback.textContent = 'Correct sequence.';
+      feedback.className='feedback ok';
+      streak.icon++; streakLine.textContent = `Solved: ${streak.icon}`;
+    } else {
+      feedback.textContent = 'Wrong order. Correct: ' + targets.map(t=>`${t.i} ${t.zh}`).join(' \u2192 ');
+      feedback.className='feedback bad';
+    }
+  }
+  draw();
+  resetBtn.onclick = ()=>{ clicked=[]; feedback.textContent=''; draw(); };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+
+// ---------- 9. Word group ----------
+function renderWordGroup(main){
+  const seed = Math.floor(Math.random()*1e9);
+  const target = WORDGROUPS[Math.floor(Math.random()*WORDGROUPS.length)];
+  const others = WORDGROUPS.filter(g=>g!==target);
+  const decoys = pickN(others.flatMap(g=>g.words).filter(w=>!target.words.includes(w)), 3);
+  const items = shuffle([...target.words.map((w,i)=>({w,i,real:true})), ...decoys.map(w=>({w,i:-1,real:false}))]);
+  let built = [];
+
+  main.appendChild(el('p','module-title','\u8bed\u5e8f\u9009\u8bcd \u00b7 Word Group'));
+  main.appendChild(el('p','module-instruction','Pick only the words that belong, in sentence order. Some words here belong to no sentence at all \u2014 leave them.'));
+
+  const built_el = el('div','built-sentence cjk','\u00A0');
+  main.appendChild(built_el);
+
+  const W = 300, H = 185, SZ = 62;
+  const st = makeStage(W, H, seed);
+  const panel = el('div','panel');
+  panel.appendChild(st.el);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const checkBtn = el('button','action','Check');
+  const resetBtn = el('button','action secondary','Reset');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(checkBtn); controls.appendChild(resetBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  const translation = el('div','translation');
+  main.appendChild(feedback); main.appendChild(translation);
+
+  const pts = scatterPositions(items.length, W, H, SZ, mulberry32(seed ^ 0x77a1));
+  const styles = items.map((it,i)=>glyphStyle(st.bg, pts[i].x+SZ/2, pts[i].y+SZ/2, mulberry32(seed + i*6113), {allowFlip:false}));
+
+  function draw(){
+    st.el.innerHTML='';
+    items.forEach((item,i)=>{
+      const node = el('div','scatter cjk');
+      node.style.left = pts[i].x+'px'; node.style.top = pts[i].y+'px';
+      node.style.width = SZ+'px'; node.style.height = '30px';
+      node.style.fontSize = '18px';
+      node.style.transform = styles[i].transform;
+      node.style.color = styles[i].color;
+      node.style.textShadow = styles[i].shadow;
+      node.textContent = item.w;
+      node.appendChild(el('div','hitpad'));
+      const idx = built.indexOf(item);
+      if(idx>-1){ node.classList.add('gone'); node.appendChild(el('div','seq', idx+1)); }
+      node.onclick = ()=>{
+        if(built.includes(item)) return;
+        built.push(item);
+        built_el.textContent = built.map(b=>b.w).join('');
+        draw();
+      };
+      st.el.appendChild(node);
+    });
+  }
+  draw();
+
+  checkBtn.onclick = ()=>{
+    const ok = built.length===target.words.length && built.every((b,i)=>b.real && b.i===i);
+    if(ok){
+      feedback.textContent='Correct.'; feedback.className='feedback ok';
+      translation.textContent = target.en;
+      streak.wordgroup++; streakLine.textContent = `Solved: ${streak.wordgroup}`;
+    } else {
+      feedback.textContent='Not quite \u2014 the sentence is: ' + target.words.join('');
+      feedback.className='feedback bad';
+      translation.textContent = target.en;
+    }
+  };
+  resetBtn.onclick = ()=>{ built=[]; built_el.textContent='\u00A0'; feedback.textContent=''; translation.textContent=''; draw(); };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 10. Spatial reasoning ----------
+function rot90(shape){
+  const out = [[0,0,0],[0,0,0],[0,0,0]];
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++) out[c][2-r] = shape[r][c];
+  return out;
+}
+function mirrorShape(shape){ return shape.map(r=>[...r].reverse()); }
+function shapeKey(s){ return s.flat().join(''); }
+function shapeEl(shape){
+  const g = el('div','shape-grid');
+  shape.flat().forEach(v=>{ g.appendChild(el('div','shape-cell' + (v?' on':''))); });
+  return g;
+}
+function renderSpatial(main){
+  let base;
+  do {
+    base = [[0,0,0],[0,0,0],[0,0,0]];
+    shuffle([0,1,2,3,4,5,6,7,8]).slice(0,4).forEach(n=>{ base[Math.floor(n/3)][n%3] = 1; });
+  } while (shapeKey(base)===shapeKey(rot90(base)));
+
+  const correct = rot90(base);
+  const candidates = [correct];
+  [rot90(correct), rot90(rot90(correct)), mirrorShape(base), mirrorShape(correct)].forEach(s=>{
+    if(candidates.length<4 && !candidates.some(c=>shapeKey(c)===shapeKey(s))) candidates.push(s);
+  });
+  while(candidates.length<4){
+    const s = [[0,0,0],[0,0,0],[0,0,0]];
+    shuffle([0,1,2,3,4,5,6,7,8]).slice(0,4).forEach(n=>{ s[Math.floor(n/3)][n%3]=1; });
+    if(!candidates.some(c=>shapeKey(c)===shapeKey(s))) candidates.push(s);
+  }
+  const opts = shuffle(candidates);
+  let picked = null;
+
+  main.appendChild(el('p','module-title','空间推理 · Spatial Reasoning'));
+  main.appendChild(el('p','module-instruction','Which option is the reference shape rotated <b>90° clockwise</b>? Watch for mirrored decoys.'));
+
+  const panel = el('div','panel');
+  const refWrap = el('div','shape-ref');
+  refWrap.appendChild(shapeEl(base));
+  panel.appendChild(refWrap);
+  panel.appendChild(el('div','translation','Reference shape'));
+  main.appendChild(panel);
+
+  const optPanel = el('div','panel');
+  const optRow = el('div','shape-row');
+  opts.forEach(s=>{
+    const box = el('div','shape-option');
+    box.appendChild(shapeEl(s));
+    box.onclick = ()=>{
+      picked = s;
+      [...optRow.children].forEach(c=>c.classList.remove('picked'));
+      box.classList.add('picked');
+    };
+    optRow.appendChild(box);
+  });
+  optPanel.appendChild(optRow);
+  main.appendChild(optPanel);
+
+  const controls = el('div','controls');
+  const checkBtn = el('button','action','Check');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(checkBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  checkBtn.onclick = ()=>{
+    if(!picked){ feedback.textContent='Pick an option first.'; feedback.className='feedback bad'; return; }
+    if(shapeKey(picked)===shapeKey(correct)){
+      feedback.textContent = 'Correct.';
+      feedback.className='feedback ok';
+      streak.spatial++; streakLine.textContent = `Solved: ${streak.spatial}`;
+    } else {
+      feedback.textContent = 'Not the right rotation — try tracing one filled cell through the turn.';
+      feedback.className='feedback bad';
+    }
+  };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 11. Obstacle avoidance ----------
+function renderAvoid(main){
+  const W = 300, H = 260, PW = 20, PH = 20;
+  const PLAYER_Y = H - 34;
+  const BAR_H = 14, GAP_W = 76;
+  const BARS_TO_CLEAR = 4;
+  const myToken = animToken;
+
+  main.appendChild(el('p','module-title','障碍躲避 · Obstacle Avoidance'));
+  main.appendChild(el('p','module-instruction','Drag left and right to steer the marker through each gap. Clear four bars. Arrow keys work too.'));
+
+  const panel = el('div','panel');
+  const stage = el('div','avoid-stage');
+  stage.tabIndex = 0;
+  const player = el('div','avoid-player');
+  stage.appendChild(player);
+  panel.appendChild(stage);
+  main.appendChild(panel);
+
+  const hud = el('div','avoid-hud');
+  const clearedEl = el('div','','Cleared: 0 / ' + BARS_TO_CLEAR);
+  const statusEl = el('div','','Drag to start');
+  hud.appendChild(clearedEl); hud.appendChild(statusEl);
+  main.appendChild(hud);
+
+  const controls = el('div','controls');
+  const restartBtn = el('button','action secondary','Restart run');
+  controls.appendChild(restartBtn);
+  main.appendChild(controls);
+
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+  const traceBox = el('div','trace');
+  traceBox.style.display = 'none';
+  main.appendChild(traceBox);
+
+  let px = W/2 - PW/2;
+  let bar = null;
+  let cleared = 0;
+  let running = false;
+  let over = false;
+  let last = 0;
+  let samples = [];
+  let startedAt = 0;
+
+  function spawnBar(){
+    const gapX = 8 + Math.random() * (W - GAP_W - 16);
+    bar = { y: -BAR_H, gapX };
+  }
+  function drawBar(){
+    [...stage.querySelectorAll('.avoid-bar')].forEach(n=>n.remove());
+    if(!bar) return;
+    const left = el('div','avoid-bar');
+    left.style.left = '0px';
+    left.style.width = Math.max(0, bar.gapX) + 'px';
+    left.style.top = bar.y + 'px';
+    const right = el('div','avoid-bar');
+    right.style.left = (bar.gapX + GAP_W) + 'px';
+    right.style.width = Math.max(0, W - bar.gapX - GAP_W) + 'px';
+    right.style.top = bar.y + 'px';
+    stage.appendChild(left); stage.appendChild(right);
+  }
+  function drawPlayer(){
+    player.style.left = px + 'px';
+    player.style.top = PLAYER_Y + 'px';
+  }
+  drawPlayer();
+
+  function setX(clientX){
+    const r = stage.getBoundingClientRect();
+    const scale = W / r.width;
+    let nx = (clientX - r.left) * scale - PW/2;
+    px = Math.max(0, Math.min(W - PW, nx));
+    samples.push({ t: performance.now(), x: px });
+    drawPlayer();
+    if(!running && !over) start();
+  }
+  function start(){
+    running = true;
+    over = false;
+    startedAt = performance.now();
+    last = startedAt;
+    if(!bar) spawnBar();
+    statusEl.textContent = 'Running';
+    requestAnimationFrame(loop);
+  }
+  function loop(now){
+    if(myToken !== animToken) return;
+    if(!running) return;
+    const dt = Math.min(50, now - last) / 1000;
+    last = now;
+    const speed = 78 + cleared * 14;
+    bar.y += speed * dt;
+
+    const overlapY = bar.y + BAR_H > PLAYER_Y && bar.y < PLAYER_Y + PH;
+    if(overlapY){
+      const inGap = px >= bar.gapX && px + PW <= bar.gapX + GAP_W;
+      if(!inGap){ fail(); return; }
+    }
+    if(bar.y > H){
+      cleared++;
+      clearedEl.textContent = `Cleared: ${cleared} / ${BARS_TO_CLEAR}`;
+      if(cleared >= BARS_TO_CLEAR){ succeed(); return; }
+      spawnBar();
+    }
+    drawBar();
+    requestAnimationFrame(loop);
+  }
+  function traceStats(){
+    if(samples.length < 2) return null;
+    let dist = 0, reversals = 0, prevDir = 0;
+    for(let i=1;i<samples.length;i++){
+      const d = samples[i].x - samples[i-1].x;
+      dist += Math.abs(d);
+      const dir = d === 0 ? prevDir : (d > 0 ? 1 : -1);
+      if(prevDir !== 0 && dir !== 0 && dir !== prevDir) reversals++;
+      if(dir !== 0) prevDir = dir;
+    }
+    const secs = (samples[samples.length-1].t - samples[0].t) / 1000;
+    return {
+      n: samples.length,
+      dist: Math.round(dist),
+      secs: secs.toFixed(1),
+      speed: secs > 0 ? Math.round(dist / secs) : 0,
+      reversals
+    };
+  }
+  function showTrace(){
+    const s = traceStats();
+    if(!s) return;
+    traceBox.style.display = 'block';
+    traceBox.innerHTML = `
+      <div class="trace-head">What the server would have recorded</div>
+      <div>Pointer samples: ${s.n}</div>
+      <div>Path length: ${s.dist} px over ${s.secs} s (mean ${s.speed} px/s)</div>
+      <div>Direction reversals: ${s.reversals}</div>
+      <div style="margin-top:8px;color:rgba(28,26,22,0.6)">This is the signal that actually decides the challenge. Passing the game is necessary but not sufficient — the shape of the trace is scored too. Constant velocity, zero reversals, or perfectly straight corrections read as automation.</div>`;
+  }
+  function fail(){
+    running = false; over = true;
+    statusEl.textContent = 'Hit a bar';
+    feedback.textContent = `Collision after ${cleared} bar${cleared===1?'':'s'}. Restart to try again.`;
+    feedback.className = 'feedback bad';
+    showTrace();
+  }
+  function succeed(){
+    running = false; over = true;
+    statusEl.textContent = 'Passed';
+    feedback.textContent = 'Cleared all four bars.';
+    feedback.className = 'feedback ok';
+    streak.avoid++; streakLine.textContent = `Solved: ${streak.avoid}`;
+    showTrace();
+  }
+  function reset(){
+    running = false; over = false;
+    px = W/2 - PW/2; bar = null; cleared = 0; samples = [];
+    clearedEl.textContent = `Cleared: 0 / ${BARS_TO_CLEAR}`;
+    statusEl.textContent = 'Drag to start';
+    feedback.textContent = ''; traceBox.style.display = 'none';
+    [...stage.querySelectorAll('.avoid-bar')].forEach(n=>n.remove());
+    drawPlayer();
+  }
+
+  stage.addEventListener('pointerdown', e=>{ stage.setPointerCapture(e.pointerId); setX(e.clientX); });
+  stage.addEventListener('pointermove', e=>{ if(e.buttons) setX(e.clientX); });
+  stage.addEventListener('keydown', e=>{
+    if(e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const r = stage.getBoundingClientRect();
+    const scale = r.width / W;
+    setX(r.left + (px + PW/2 + (e.key==='ArrowLeft' ? -14 : 14)) * scale);
+  });
+  restartBtn.onclick = reset;
+
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 12. Match-3 ----------
+const M3 = ['🔴','🔵','🟢','🟡','🟣'];
+function m3Runs(b, N){
+  const hits = new Set();
+  for(let r=0;r<N;r++) for(let c=0;c<N-2;c++){
+    if(b[r][c]===b[r][c+1] && b[r][c]===b[r][c+2]){ hits.add(r+','+c); hits.add(r+','+(c+1)); hits.add(r+','+(c+2)); }
+  }
+  for(let c=0;c<N;c++) for(let r=0;r<N-2;r++){
+    if(b[r][c]===b[r+1][c] && b[r][c]===b[r+2][c]){ hits.add(r+','+c); hits.add((r+1)+','+c); hits.add((r+2)+','+c); }
+  }
+  return hits;
+}
+function renderMatch3(main){
+  const N = 5;
+  let board, solutions;
+  for(let tries=0;tries<400;tries++){
+    board = Array.from({length:N},()=>Array.from({length:N},()=>M3[Math.floor(Math.random()*M3.length)]));
+    if(m3Runs(board,N).size) continue;
+    solutions = [];
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      [[0,1],[1,0]].forEach(([dr,dc])=>{
+        const r2=r+dr, c2=c+dc;
+        if(r2>=N||c2>=N) return;
+        const t=board[r][c]; board[r][c]=board[r2][c2]; board[r2][c2]=t;
+        if(m3Runs(board,N).size) solutions.push(`${r},${c}|${r2},${c2}`);
+        const t2=board[r][c]; board[r][c]=board[r2][c2]; board[r2][c2]=t2;
+      });
+    }
+    if(solutions.length>=1 && solutions.length<=4) break;
+  }
+
+  main.appendChild(el('p','module-title','消消乐 · Match-3'));
+  main.appendChild(el('p','module-instruction','Tap two adjacent tiles to swap them and line up three of the same colour. There are only a few swaps that work.'));
+
+  const panel = el('div','panel');
+  const grid = el('div','m3-grid');
+  panel.appendChild(grid);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  let sel = null, done = false, hits = new Set();
+  function adjacent(a,b){ return Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1]) === 1; }
+  function draw(){
+    grid.innerHTML='';
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      const cell = el('div','m3-cell', board[r][c]);
+      if(sel && sel[0]===r && sel[1]===c) cell.classList.add('sel');
+      if(hits.has(r+','+c)) cell.classList.add('hit');
+      cell.onclick = ()=>{
+        if(done) return;
+        if(!sel){ sel=[r,c]; draw(); return; }
+        if(sel[0]===r && sel[1]===c){ sel=null; draw(); return; }
+        if(!adjacent(sel,[r,c])){ sel=[r,c]; draw(); return; }
+        const [sr,sc]=sel;
+        const t=board[sr][sc]; board[sr][sc]=board[r][c]; board[r][c]=t;
+        const found = m3Runs(board,N);
+        if(found.size){
+          hits = found; done = true; sel=null;
+          feedback.textContent = `Matched ${found.size} tiles.`;
+          feedback.className='feedback ok';
+          streak.match3++; streakLine.textContent = `Solved: ${streak.match3}`;
+        } else {
+          const t2=board[sr][sc]; board[sr][sc]=board[r][c]; board[r][c]=t2;
+          sel=null;
+          feedback.textContent = 'That swap makes no line. Try another pair.';
+          feedback.className='feedback bad';
+        }
+        draw();
+      };
+      grid.appendChild(cell);
+    }
+  }
+  draw();
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 13. Gomoku ----------
+function renderGomoku(main){
+  const N = 9;
+  let board, winR, winC;
+  const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+  function winsAt(b, r, c){
+    if(b[r][c] !== 0) return false;
+    b[r][c] = 1;
+    let win = false;
+    for(const [dr,dc] of dirs){
+      let n = 1;
+      for(let k=1;k<5;k++){ const rr=r+dr*k, cc=c+dc*k; if(rr<0||cc<0||rr>=N||cc>=N||b[rr][cc]!==1) break; n++; }
+      for(let k=1;k<5;k++){ const rr=r-dr*k, cc=c-dc*k; if(rr<0||cc<0||rr>=N||cc>=N||b[rr][cc]!==1) break; n++; }
+      if(n>=5){ win = true; break; }
+    }
+    b[r][c] = 0;
+    return win;
+  }
+  for(let tries=0;tries<600;tries++){
+    board = Array.from({length:N},()=>Array(N).fill(0));
+    const [dr,dc] = dirs[Math.floor(Math.random()*dirs.length)];
+    const rs = dr>=0 ? Math.floor(Math.random()*(N-4*Math.abs(dr))) : 0;
+    let cs;
+    if(dc>=0) cs = Math.floor(Math.random()*(N-4*Math.abs(dc)));
+    else cs = 4 + Math.floor(Math.random()*(N-4));
+    const line = [];
+    for(let k=0;k<5;k++) line.push([rs+dr*k, cs+dc*k]);
+    if(line.some(([r,c])=>r<0||c<0||r>=N||c>=N)) continue;
+    const gap = Math.floor(Math.random()*5);
+    line.forEach(([r,c],i)=>{ if(i!==gap) board[r][c]=1; });
+    [winR, winC] = line[gap];
+    let placed = 0;
+    for(let a=0;a<70 && placed<12;a++){
+      const r = Math.floor(Math.random()*N), c = Math.floor(Math.random()*N);
+      if(board[r][c]!==0 || (r===winR && c===winC)) continue;
+      board[r][c] = 2; placed++;
+    }
+    let winners = [];
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(winsAt(board,r,c)) winners.push([r,c]);
+    if(winners.length===1) break;
+  }
+
+  main.appendChild(el('p','module-title','五子棋 · Gomoku'));
+  main.appendChild(el('p','module-instruction','Click the empty point that gives <b>black</b> five in a row. Exactly one point works.'));
+
+  const panel = el('div','panel');
+  const boardEl = el('div','go-board');
+  boardEl.style.gridTemplateColumns = `repeat(${N}, 28px)`;
+  panel.appendChild(boardEl);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  let done = false;
+  function draw(){
+    boardEl.innerHTML='';
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+      const cell = el('div','go-cell');
+      if(board[r][c]===1) cell.appendChild(el('div','go-stone b'));
+      else if(board[r][c]===2) cell.appendChild(el('div','go-stone w'));
+      if(done && r===winR && c===winC) cell.classList.add('good');
+      cell.onclick = ()=>{
+        if(done || board[r][c]!==0) return;
+        if(r===winR && c===winC){
+          done = true;
+          board[r][c] = 1;
+          feedback.textContent = 'Correct — five in a row.';
+          feedback.className='feedback ok';
+          streak.gomoku++; streakLine.textContent = `Solved: ${streak.gomoku}`;
+        } else {
+          cell.classList.add('mark');
+          feedback.textContent = 'No line there. Look for four black stones with one gap.';
+          feedback.className='feedback bad';
+          return;
+        }
+        draw();
+      };
+      boardEl.appendChild(cell);
+    }
+  }
+  draw();
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+// ---------- 14. 3x3 grid ----------
+const NINE_SETS = [
+  {zh:'水果', en:'fruit', yes:['🍎','🍌','🍇','🍓','🍐','🍑'], no:['🚗','🔧','🐦','⚽','🎸','🕯️']},
+  {zh:'交通工具', en:'vehicles', yes:['🚗','🚌','🚲','✈️','🚂','🛵'], no:['🍎','🐈','🌳','📕','🔔','🧦']},
+  {zh:'动物', en:'animals', yes:['🐈','🐕','🐦','🐟','🐘','🐝'], no:['🚗','🍎','🎸','🔑','🌂','⌚']},
+  {zh:'乐器', en:'instruments', yes:['🎸','🎻','🥁','🎺','🎹','🪕'], no:['🍌','🚲','🐟','🔨','📎','🧦']},
+];
+function renderNine(main){
+  const set = NINE_SETS[Math.floor(Math.random()*NINE_SETS.length)];
+  const n = 3 + Math.floor(Math.random()*2);
+  const targets = pickN(set.yes, n);
+  const fillers = pickN(set.no, 9-n);
+  const cells = shuffle([...targets.map(e=>({e,ok:true})), ...fillers.map(e=>({e,ok:false}))]);
+  let selected = new Set(), checked = false;
+  const seedN = Math.floor(Math.random()*1e9);
+
+  main.appendChild(el('p','module-title','九宫格 · 3×3 Grid'));
+  main.appendChild(el('p','module-instruction cjk',`请点击所有的${set.zh}`));
+  main.appendChild(el('div','translation',`Click every tile showing ${set.en}, then check.`));
+
+  const panel = el('div','panel');
+  const grid = el('div','nine-grid');
+  panel.appendChild(grid);
+  main.appendChild(panel);
+
+  const controls = el('div','controls');
+  const checkBtn = el('button','action','Check');
+  const nextBtn = el('button','action secondary','New puzzle');
+  controls.appendChild(checkBtn); controls.appendChild(nextBtn);
+  main.appendChild(controls);
+  const feedback = el('div','feedback');
+  main.appendChild(feedback);
+
+  function draw(){
+    grid.innerHTML='';
+    cells.forEach((item,i)=>{
+      const cell = el('div','nine-cell', item.e);
+      if(difficulty !== 'clean'){
+        const tb = makeBg(seedN + i*1013, 64, 64);
+        cell.style.backgroundImage = `url(${tb.url})`;
+        cell.style.backgroundSize = 'cover';
+        cell.style.textShadow = '0 1px 3px rgba(0,0,0,0.6)';
+      }
+      if(selected.has(i)) cell.classList.add('sel');
+      if(checked){
+        if(item.ok && selected.has(i)) cell.classList.add('correct');
+        else if(item.ok !== selected.has(i)) cell.classList.add('wrong');
+      }
+      cell.onclick = ()=>{
+        if(checked) return;
+        if(selected.has(i)) selected.delete(i); else selected.add(i);
+        draw();
+      };
+      grid.appendChild(cell);
+    });
+  }
+  draw();
+
+  checkBtn.onclick = ()=>{
+    checked = true;
+    const ok = cells.every((item,i)=>item.ok === selected.has(i));
+    if(ok){
+      feedback.textContent = `Correct — all ${n} found.`;
+      feedback.className='feedback ok';
+      streak.nine++; streakLine.textContent = `Solved: ${streak.nine}`;
+    } else {
+      feedback.textContent = `Not quite — there were ${n}. Green marks correct picks, red marks mistakes.`;
+      feedback.className='feedback bad';
+    }
+    draw();
+  };
+  nextBtn.onclick = ()=>render();
+  const streakLine = main.querySelector('.streak') || {textContent:''};
+}
+
+render();
+</script>
+</body>
+</html>
