@@ -2,7 +2,7 @@
 
 A single-page, dependency-free practice tool covering thirteen CAPTCHA styles deployed on Chinese sites — click-sequence, idiom completion, word order, icon click, rotate-to-align, arithmetic, match-3, gomoku, grid selection, and mouse-trajectory obstacle avoidance.
 
-Built for OSINT researchers who don't read Chinese fluently, to build muscle memory with the interaction mechanics before encountering them in the field.
+Built for learners who don't read Chinese fluently, to build muscle memory with the interaction mechanics before encountering them in the field.
 
 ## What's in here
 
