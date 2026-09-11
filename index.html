@@ -8,6 +8,7 @@
   :root{
     --ink:#1c1a16;
     --paper:#f1ece0;
+    --bg:#ffffff;
     --paper-dim:#e6dfcd;
     --seal:#a33327;
     --seal-dim:#c96354;
@@ -18,11 +19,13 @@
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background:var(--paper);
+    background:var(--bg);
     color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;
+    overflow-wrap:break-word;
   }
+  a{ overflow-wrap:anywhere; }
   .cjk{ font-family:"Songti SC","STSong","Noto Serif SC","SimSun",serif; }
 
   header{
@@ -564,6 +567,16 @@
     font-size:12px;
     color:rgba(28,26,22,0.55);
   }
+  @media (min-width:860px){
+    header{ max-width:900px; margin:0 auto; }
+    header p{ max-width:none; }
+    nav{ max-width:900px; margin:0 auto; }
+    .toolbar{ max-width:900px; margin:0 auto; }
+    main{ max-width:760px; }
+    .dataset-note{ max-width:760px; }
+    footer.credit{ max-width:760px; }
+    body{ font-size:15.5px; }
+  }
 </style>
 </head>
 <body>
@@ -579,8 +592,8 @@
 <main id="main"></main>
 
 <footer class="credit">
-  <p><b>Built by Eve C. with Claude (Anthropic).</b> Free to use, adapt and share for OSINT training. The CAPTCHA reproductions here are original approximations built from published descriptions — no vendor assets or captured challenge images are embedded.</p>
-  <p>Corrections welcome, particularly on vendor attribution and on the two types that still lack direct literature (语序点选, 语序选词). <a href="https://github.com/stickycatsoul/chinese-captcha-practice">Github repo</a></p>
+  <p><b>Built by [YOUR NAME] with Claude (Anthropic).</b> Free to use, adapt and share for OSINT training. The CAPTCHA reproductions here are original approximations built from published descriptions — no vendor assets or captured challenge images are embedded.</p>
+  <p>href="https://stickycatsoul.github.io/chinese-captcha-practice/">If you spot an inaccuracy — a vendor attribution, a mismatched citation, anything — please open an issue describing what's wrong, or submit a PR if you already have the fix. Both are welcome.</a></p>
 </footer>
 
 <div class="dataset-note">
@@ -621,7 +634,15 @@ const CHAR_POOL = [
   {ch:'日',py:'ri'},{ch:'月',py:'yue'},{ch:'心',py:'xin'},{ch:'手',py:'shou'},
   {ch:'口',py:'kou'},{ch:'女',py:'nv'},{ch:'子',py:'zi'},{ch:'门',py:'men'},
   {ch:'耳',py:'er'},{ch:'牛',py:'niu'},{ch:'羊',py:'yang'},{ch:'马',py:'ma'},
-  {ch:'鱼',py:'yu'},{ch:'鸟',py:'niao'},{ch:'虫',py:'chong'},{ch:'土',py:'tu'}
+  {ch:'鱼',py:'yu'},{ch:'鸟',py:'niao'},{ch:'虫',py:'chong'},{ch:'土',py:'tu'},
+  {ch:'石',py:'shi'},{ch:'云',py:'yun'},{ch:'风',py:'feng'},{ch:'电',py:'dian'},
+  {ch:'力',py:'li'},{ch:'刀',py:'dao'},{ch:'弓',py:'gong'},{ch:'米',py:'mi'},
+  {ch:'豆',py:'dou'},{ch:'瓜',py:'gua'},{ch:'花',py:'hua'},{ch:'草',py:'cao'},
+  {ch:'竹',py:'zhu'},{ch:'车',py:'che'},{ch:'舟',py:'zhou'},{ch:'犬',py:'quan'},
+  {ch:'猫',py:'mao'},{ch:'虎',py:'hu'},{ch:'龙',py:'long'},{ch:'象',py:'xiang'},
+  {ch:'熊',py:'xiong'},{ch:'猴',py:'hou'},{ch:'鼠',py:'shu'},{ch:'蛇',py:'she'},
+  {ch:'龟',py:'gui'},{ch:'井',py:'jing'},{ch:'布',py:'bu'},{ch:'衣',py:'yi'},
+  {ch:'伞',py:'san'},{ch:'鞋',py:'xie'}
 ];
 
 const IDIOMS = [
@@ -633,6 +654,14 @@ const IDIOMS = [
   {full:'杯弓蛇影', blank:1, options:['弓','箭','刀','剑'], gloss:"a bow's reflection in a cup mistaken for a snake — needless paranoia"},
   {full:'亡羊补牢', blank:1, options:['羊','牛','马','鸡'], gloss:'mend the pen after the sheep is lost — fixing a problem late is still worthwhile'},
   {full:'井底之蛙', blank:3, options:['蛙','鱼','龟','蛇'], gloss:'a frog at the bottom of a well — limited by a narrow point of view'},
+  {full:'画龙点睛', blank:1, options:['龙','虎','凤','蛇'], gloss:'paint the dragon, then dot in the eye — the small finishing touch that brings the whole thing to life'},
+  {full:'一箭双雕', blank:3, options:['雕','鹰','雁','鹤'], gloss:'one arrow, two hawks — achieving two goals with a single action'},
+  {full:'骑虎难下', blank:1, options:['虎','龙','狼','豹'], gloss:"riding a tiger, hard to dismount — committed to a difficult course with no easy way to stop"},
+  {full:'望梅止渴', blank:1, options:['梅','桃','梨','杏'], gloss:'gaze at plums to quench thirst — comforting yourself with an unfulfilled hope'},
+  {full:'塞翁失马', blank:3, options:['马','牛','羊','驴'], gloss:"the old man at the frontier loses his horse — a setback that turns out to be a blessing"},
+  {full:'叶公好龙', blank:3, options:['龙','虎','凤','蛇'], gloss:'Lord Ye loves dragons — until a real one appears and he flees; claiming to like something you actually fear'},
+  {full:'卧薪尝胆', blank:3, options:['胆','肝','心','血'], gloss:'sleep on brushwood, taste gall — enduring hardship deliberately to stay motivated toward a goal'},
+  {full:'破釜沉舟', blank:3, options:['舟','船','车','马'], gloss:'break the cauldrons, sink the boats — committing fully, with no way to retreat'},
 ];
 
 const SENTENCES = [
